@@ -1,0 +1,19 @@
+
+import pyodbc
+
+
+con_str ="DRIVER={ODBC Driver 18 for SQL Server};SERVER=10.177.3.78;DATABASE=vectordb;UID=sa;PWD=1_SQLPerf;LongAsMax=yes;Connect Timeout=30;TrustServerCertificate=Yes;LongAsMax=yes;"
+
+cxn = pyodbc.connect(con_str)
+cur = cxn.cursor()
+cxn.autocommit = True
+
+# Integer
+hndl = cur.prepareStatement("declare @v int = ?; SELECT @v as id")
+cur.executePreparedStatement(hndl, 1)
+
+
+# Small Vector
+#hndl = cur.prepareStatement("declare @v vector(1) = ?; SELECT @v as id")
+#cur.executePreparedStatement(hndl, '[1]')
+
