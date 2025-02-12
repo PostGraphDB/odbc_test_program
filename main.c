@@ -47,12 +47,12 @@ int main(int argc, char **argv) {
 	SQLHENV     hEnv = NULL;
 	SQLHDBC     hDbc = NULL;
 	SQLHSTMT    hStmt = NULL;
-	//SQLCHAR*      pwszConnStr = "DRIVER={ODBC Driver 18 for SQL Server};SERVER=10.177.3.78;DATABASE=vectordb;UID=sa;PWD=1_SQLPerf;LongAsMax=yes;Connect Timeout=30;TrustServerCertificate=Yes;LongAsMax=yes;";
+	//SQLCHAR*    pwszConnStr = "DRIVER={ODBC Driver 18 for SQL Server};SERVER=10.177.3.78;DATABASE=vectordb;UID=sa;PWD=1_SQLPerf;LongAsMax=yes;Connect Timeout=30;TrustServerCertificate=Yes;LongAsMax=yes;";
 	WCHAR       wszInput[1000];
-	SQLCHAR*      pwszConnStr = "DRIVER={PostgresSQL Unicode};SERVER=localhost;DATABASE=vectordb;UID=josh;PWD=josh;";
-	
-    	SQLLEN cchDisplay;
-		SQLLEN ssType;
+	//SQLCHAR*    pwszConnStr = "DRIVER={PostgresSQL Unicode};SERVER=localhost;PORT=5432;DATABASE=vectordb;UID=josh;PWD=josh;";
+    SQLCHAR connStr[] = "DSN=PostgreSQL_DSN;";  
+    SQLLEN cchDisplay;
+	SQLLEN ssType;
     SQLINTEGER value; SQLLEN cbFetched;
 	
 	// Allocate an environment
@@ -63,14 +63,23 @@ int main(int argc, char **argv) {
 
 	ReportStatus(SQLSetEnvAttr(hEnv, SQL_ATTR_ODBC_VERSION, (SQLPOINTER)SQL_OV_ODBC3, 0));
 	ReportStatus(SQLAllocHandle(SQL_HANDLE_DBC, hEnv, &hDbc));
-	ReportStatus(SQLDriverConnect(hDbc, NULL, pwszConnStr, SQL_NTS, NULL, 0, NULL, SQL_DRIVER_COMPLETE));
-	ReportStatus(SQLAllocHandle(SQL_HANDLE_STMT, hDbc, &hStmt));
+
+	// SQL Server
+    //ReportStatus(SQLDriverConnect(hDbc, NULL, pwszConnStr, SQL_NTS, NULL, 0, NULL, SQL_DRIVER_COMPLETE));
+
+    // Postgres
+    ReportStatus(SQLDriverConnect(hDbc, NULL, connStr, SQL_NTS, NULL, 0, NULL, SQL_DRIVER_COMPLETE));
+
+    // Postgres
+	//ReportStatus(SQLConnect(hDbc, (SQLCHAR *)"localhost", (SQLLEN)9, (SQLCHAR *)"josh", (SQLLEN)4, (SQLCHAR *)"josh", (SQLLEN)4));
+	
+    ReportStatus(SQLAllocHandle(SQL_HANDLE_STMT, hDbc, &hStmt));
 
 /************************************************
-Non-Paramatized Prepared Query
+Non-Paramatized Prepared Query - Works as Expected
 ******************************************************/
 
-
+/*
     fprintf(stderr, "Prepare: ");
 	ReportStatus(SQLPrepare(hStmt, "SELECT 1 as id", strlen("SELECT 1 as id"))); 
 
@@ -89,8 +98,8 @@ Non-Paramatized Prepared Query
 
 
 
-    fprintf(stderr, "Prepare: ");
-	ReportStatus(SQLPrepare(hStmt, "SELECT 1 as id", strlen("SELECT 1 as id"))); 
+    //fprintf(stderr, "Prepare: ");
+	//ReportStatus(SQLPrepare(hStmt, "SELECT 1 as id", strlen("SELECT 1 as id"))); 
 
 	fprintf(stderr, "Execute: ");
 	ReportStatus(SQLExecute(hStmt));
@@ -106,14 +115,19 @@ Non-Paramatized Prepared Query
 	SQLFreeStmt(hStmt, SQL_RESET_PARAMS);                                       
 	SQLFreeStmt(hStmt, SQL_CLOSE);                                       
 
-
+*/
 /********************************************************
-Parameterized Integer
-*********************************************************/	
+Parameterized Integer - SQL_RESET_PARAMS Issue
+**********************************************************/	
 /*
-    fprintf(stderr, "Parameterized Integer Start\n");
+    fprintf(stderr, "Parameterized Integer SQL_RESET_PARAMS\n");
 	fprintf(stderr, "Prepare: ");
-	ReportStatus(SQLPrepare(hStmt, "declare @v int; SELECT ? as id", strlen("declare @vint; SELECT ? as id"))); 
+	//SQL Server
+    ReportStatus(SQLPrepare(hStmt, "declare @v int; SELECT ? as id", strlen("declare @vint; SELECT ? as id"))); 
+    
+    // Postgres
+    //ReportStatus(SQLPrepare(hStmt, "SELECT ?::int as id", strlen("SELECT ?::int as id"))); 
+
 
     fprintf(stderr, "Bind: ");
     SQLINTEGER v = 2; SQLLEN l;
@@ -131,15 +145,56 @@ Parameterized Integer
 	
 	// Problem Here
 	//SQLFreeStmt(hStmt, SQL_RESET_PARAMS);       
-    //SQLFreeStmt(hStmt, SQL_UNBIND);                                       
+    SQLFreeStmt(hStmt, SQL_UNBIND);                                       
 	SQLFreeStmt(hStmt, SQL_CLOSE);
 
-    //fprintf(stderr, "Prepare: ");
-	//ReportStatus(SQLPrepare(hStmt, "SELECT 1 as id", strlen("SELECT 1 as id"))); 
+	fprintf(stderr, "Execute: ");
+	ReportStatus(SQLExecute(hStmt));
+
+	fprintf(stderr, "Fetch: ");
+	ReportStatus(SQLFetch(hStmt));
+
+	fprintf(stderr, "SQLGetData: ");
+	ReportStatus(SQLGetData(hStmt, (SQLUSMALLINT)(1), SQL_C_LONG, &value, sizeof(value), &cbFetched));
+	fprintf(stderr, "Value %i\n", value);
+*/
+/********************************************************
+Parameterized Integer - SQLBindParameter Issue
+**********************************************************/	
+
+    fprintf(stderr, "Parameterized Integer SQLBindParameter\n");
+	fprintf(stderr, "Prepare: ");
+	//SQL Server
+    //ReportStatus(SQLPrepare(hStmt, "declare @v int; SELECT ? as id", strlen("declare @vint; SELECT ? as id"))); 
     
-	//fprintf(stderr, "Bind: "); 
+    // Postgres
+    ReportStatus(SQLPrepare(hStmt, "SELECT ?::int as id", strlen("SELECT ?::int as id"))); 
+
+
+    fprintf(stderr, "Bind: ");
+    SQLINTEGER v = 2; SQLLEN l;
+	ReportStatus(SQLBindParameter(hStmt, (SQLUSMALLINT)1, SQL_PARAM_INPUT, SQL_INTEGER, SQL_DECIMAL, 4, 0, &v, 4, &l ));
+
+	fprintf(stderr, "Execute: ");
+	ReportStatus(SQLExecute(hStmt));
+
+
+	fprintf(stderr, "Fetch: ");
+	ReportStatus(SQLFetch(hStmt));
+
+	fprintf(stderr, "SQLGetData: ");
+	ReportStatus(SQLGetData(hStmt, (SQLUSMALLINT)(1), SQL_C_LONG, &value, sizeof(value), &cbFetched));
+	fprintf(stderr, "Value %i\n", value);
+	
+	//SQLFreeStmt(hStmt, SQL_RESET_PARAMS);       
+    SQLFreeStmt(hStmt, SQL_UNBIND);                                       
+	SQLFreeStmt(hStmt, SQL_CLOSE);
+
+	fprintf(stderr, "Bind: "); 
+	SQLINTEGER v1 = 2;
 	v = 3;
- 	//ReportStatus(SQLBindParameter(hStmt, (SQLUSMALLINT)1, SQL_PARAM_INPUT, SQL_INTEGER, SQL_DECIMAL, 4, 0, &v, 4, &l ));
+    // Use new variable
+ 	ReportStatus(SQLBindParameter(hStmt, (SQLUSMALLINT)1, SQL_PARAM_INPUT, SQL_INTEGER, SQL_DECIMAL, 4, 0, &v1, 4, &l ));
 
 
 	fprintf(stderr, "Execute: ");
@@ -151,7 +206,7 @@ Parameterized Integer
 	fprintf(stderr, "SQLGetData: ");
 	ReportStatus(SQLGetData(hStmt, (SQLUSMALLINT)(1), SQL_C_LONG, &value, sizeof(value), &cbFetched));
 	fprintf(stderr, "Value %i\n", value);
-*/	
+	
 /********************************************************
 Parameterized Vector
 *********************************************************/	
@@ -160,6 +215,10 @@ Parameterized Vector
 	
 	fprintf(stderr, "Prepare: ");
 	ReportStatus(SQLPrepare(hStmt, "declare @v VARCHAR(50); SELECT ? as id", strlen("declare @v VARCHAR(50); SELECT ? as id"))); 
+
+    // Postgres
+    //ReportStatus(SQLPrepare(hStmt, "SELECT ?::int as id", strlen("SELECT ?::int as id"))); 
+
 
     fprintf(stderr, "Bind: ");
     SQLLEN l;
