@@ -264,9 +264,7 @@ Parameterized Integer - SQLBindParameteri Pointer Issue
 /********************************************************
 Parameterized Vector
 **********************************************************/    
-
     fprintf(stderr, "Parameterized Vector Start\n");
-    
 
     /*********************************************************
         1st Query Prepare the Statement
@@ -276,7 +274,6 @@ Parameterized Vector
 
     // Postgres
     //ReportStatus(SQLPrepare(hStmt, "SELECT ?::text as id", strlen("SELECT ?::text as id"))); 
-
 
     fprintf(stderr, "Bind: ");
     SQLLEN l = 1;
@@ -302,7 +299,7 @@ Parameterized Vector
     fprintf(stderr, "Fetch: ");
     ReportStatus(SQLFetch(hStmt));
 
-    fprintf(stderr, "varhcar: %s", varchar_value);
+    fprintf(stderr, "varhcar: %s\n", varchar_value);
    
     SQLFreeStmt(hStmt, SQL_RESET_PARAMS);       
     SQLFreeStmt(hStmt, SQL_UNBIND);                                       
@@ -311,12 +308,12 @@ Parameterized Vector
     /*************************************************************
         2nd Query Do Not Reprepare the statement
     **************************************************************/
-    SQLCHAR *vec_str2 = "[4, 5, 6]\0";
+    SQLCHAR vec_str2[10] = "[4, 5, 6]\0";
     SQLLEN l2 = 1;
     l2 = SQL_DATA_AT_EXEC;///sstrlen((char *)vec_str);
     
     fprintf(stderr, "Bind: ");
-    ReportStatus(SQLBindParameter(hStmt, (SQLUSMALLINT)1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR, 0, 0, vec_str2, sizeof((char *) vec_str2), &l2 ));
+    ReportStatus(SQLBindParameter(hStmt, (SQLUSMALLINT)1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR, 0, 0, &vec_str2, sizeof(vec_str2), &l2 ));
 
     fprintf(stderr, "BindCol: ");
     ReportStatus(SQLBindCol(hStmt, 1, SQL_C_CHAR, &varchar_value, 100000, &varchar_len_or_ind));
@@ -325,114 +322,76 @@ Parameterized Vector
     ReportStatus(SQLExecute(hStmt));
 
     ReportStatus(ret = SQLParamData(hStmt, (SQLPOINTER*)pInfo));
-    ReportStatus(ret = SQLPutData(hStmt, vec_str2, SQL_NTS));
+    ReportStatus(ret = SQLPutData(hStmt, &vec_str2, SQL_NTS));
     ReportStatus(ret = SQLParamData(hStmt, (SQLPOINTER*)pInfo));
- 
 
     fprintf(stderr, "Fetch: ");
     ReportStatus(SQLFetch(hStmt));
 
-    fprintf(stderr, "varhcar: %s", varchar_value);
+    fprintf(stderr, "varhcar: %s\n", varchar_value);
+
+    int cbAllocated = 10000;
+    char *pb = malloc(sizeof(char) * cbAllocated);
+    SQLLEN cbData = 0;
  
+    ReportStatus(SQLGetData(hStmt, 1, SQL_C_CHAR, &pb, cbAllocated, &cbData));
+    fprintf(stderr, "SQLGetData: %s\n", (char *)pb);
+
     SQLFreeStmt(hStmt, SQL_UNBIND);                                       
     SQLFreeStmt(hStmt, SQL_CLOSE);
 
     /****************************************************************
         3rd Query Memcpy to the existing buffers
     *****************************************************************/
-    //SQLCHAR *
-    vec_str2 = "[7, 8, 9]\0";
-    //memcpy(vec_str2, vec_str3, sizeof(vec_str2));
-    
+    SQLCHAR vec_str3[10] = "[7, 8, 9]\0";
+    memcpy(&vec_str2, &vec_str3, sizeof(vec_str2));
+
+    //fprintf(stderr, "Bind: ");
+    //ReportStatus(SQLBindParameter(hStmt, (SQLUSMALLINT)1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR, 0, 0, &vec_str3, sizeof(vec_str3), &l2 ));
+
     fprintf(stderr, "Execute: ");
     ReportStatus(SQLExecute(hStmt));
 
     ReportStatus(ret = SQLParamData(hStmt, (SQLPOINTER*)pInfo));
-    ReportStatus(ret = SQLPutData(hStmt, vec_str, SQL_NTS));
+    ReportStatus(ret = SQLPutData(hStmt, &vec_str2, SQL_NTS));
     ReportStatus(ret = SQLParamData(hStmt, (SQLPOINTER*)pInfo));
  
-
     fprintf(stderr, "Fetch: ");
     ReportStatus(SQLFetch(hStmt));
 
-    fprintf(stderr, "varhcar: %s", varchar_value);
+    fprintf(stderr, "varhcar: %s\n", varchar_value);
  
-/*************************************** Parameterized Vector ****************************************/    
-/*
-    fprintf(stderr, "Big Parameterized Vector Start\n");
-    
-    fprintf(stderr, "Prepare: ");
-    // mssql
-    ReportStatus(SQLPrepare(hStmt, "declare @v VARCHAR(MAX); SELECT ? as id", strlen("declare @v VARCHAR(MAX); SELECT ? as id"))); 
+//    SQLFreeStmt(hStmt, SQL_UNBIND);                                       
+     SQLFreeStmt(hStmt, SQL_CLOSE);
 
-    // Postgres
-    //ReportStatus(SQLPrepare(hStmt, "SELECT ?::text as id", strlen("SELECT ?::text as id"))); 
 
-    fprintf(stderr, "Bind: ");
-    SQLLEN l;
-    SQLCHAR *vec_str = "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh\0";
-    l = SQL_DATA_AT_EXEC;///sstrlen((char *)vec_str);
-    fprintf(stderr, "l: %i\n", (int)l);
+    /****************************************************************
+        4th Query Same as query 2 with no SQLUnbind or SQL_RESET_PARAMS
+    *****************************************************************/
+    SQLCHAR vec_str4[10] = "[1, 5, 9]\0";
+    //memcpy(&vec_str2, &vec_str3, sizeof(vec_str2));
+
+    //fprintf(stderr, "Bind: ");
+    //ReportStatus(SQLBindParameter(hStmt, (SQLUSMALLINT)1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR, 0, 0, &vec_str4, sizeof(vec_str4), &l2 ));
+
+    //fprintf(stderr, "BindCol: ");
+    //ReportStatus(SQLBindCol(hStmt, 1, SQL_C_CHAR, &varchar_value, 100000, &varchar_len_or_ind));
  
-    fprintf(stderr, "Bind: ");
-    ReportStatus(SQLBindParameter(hStmt, (SQLUSMALLINT)1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_LONGVARCHAR, 0, 0, vec_str, 0, &l));
-    //ReportStatus(SQLBindParameter(hStmt, (SQLUSMALLINT)1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_LONGVARCHAR, 0, 0, vec_str, 0, &l ));
 
-    SQLCHAR varchar_value[100000]; // Buffer to store the VARCHAR data.  Make it large enough!
-    SQLLEN varchar_len_or_ind; // To store the length or indicator (e.g., SQL_NULL_DATA)
-
-    fprintf(stderr, "BindCol: ");
-    ReportStatus(SQLBindCol(hStmt, 1, SQL_C_CHAR, &varchar_value, 100000, &varchar_len_or_ind));
- 
     fprintf(stderr, "Execute: ");
-    RETCODE ret;
-    ReportStatus(ret = SQLExecute(hStmt));
+    ReportStatus(SQLExecute(hStmt));
 
-    void* pInfo;
     ReportStatus(ret = SQLParamData(hStmt, (SQLPOINTER*)pInfo));
-    ReportStatus(ret = SQLPutData(hStmt, vec_str, SQL_NTS));
+    ReportStatus(ret = SQLPutData(hStmt, &vec_str4, SQL_NTS));
     ReportStatus(ret = SQLParamData(hStmt, (SQLPOINTER*)pInfo));
-    
+ 
     fprintf(stderr, "Fetch: ");
     ReportStatus(SQLFetch(hStmt));
-    fprintf(stderr, "Result: %s\n", varchar_value);
-    fprintf(stderr, "l: %i\n", (int)l);
 
-    SQLLEN cRows = -1;
-    ret = SQLRowCount(hStmt, &cRows);
-    fprintf(stderr, "cRows: %i\n", (int)cRows);
-
-    SQLSMALLINT cCols = 0;
-    ret = SQLNumResultCols(hStmt, &cCols);
-    fprintf(stderr, "cCols: %i\n", (int)cCols);
-
-    SQLFreeStmt(hStmt, SQL_RESET_PARAMS);                                       
-    SQLFreeStmt(hStmt, SQL_UNBIND);                                       
+    fprintf(stderr, "varhcar: %s\n", varchar_value);
     SQLFreeStmt(hStmt, SQL_CLOSE);
 
-    SQLCHAR *vec_str_2 = "jjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj\0";
-    l = SQL_DATA_AT_EXEC;///strlen((char *)vec_str);
-    fprintf(stderr, "l: %i\n", (int)l);
-    
-    fprintf(stderr, "Bind: ");
-    ReportStatus(SQLBindParameter(hStmt, (SQLUSMALLINT)1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_LONGVARCHAR, 0, 0, vec_str, 0, &l ));
- 
-    fprintf(stderr, "Execute: ");
-    ReportStatus(ret = SQLExecute(hStmt));
 
-    ReportStatus(ret = SQLParamData(hStmt, (SQLPOINTER*)pInfo));
-    ReportStatus(ret = SQLPutData(hStmt, vec_str_2, SQL_NTS));
-    ReportStatus(ret = SQLParamData(hStmt, (SQLPOINTER*)pInfo));
-    
-    fprintf(stderr, "Fetch: ");
-    ReportStatus(SQLFetch(hStmt));
-    fprintf(stderr, "Result: %s\n", varchar_value);
-    fprintf(stderr, "l: %i\n", (int)l);
-
-    SQLFreeStmt(hStmt, SQL_UNBIND);                                       
-    SQLFreeStmt(hStmt, SQL_CLOSE);
-*/
-/*********************************** End ***************************************/
     
     SQLDisconnect(hEnv);
 
