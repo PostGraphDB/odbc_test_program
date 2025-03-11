@@ -33,7 +33,7 @@ SQLFreeStmt(hStmt, SQL_CLOSE);
 
 If you were to run this query in Postgres then what would happen is this query would have between 6 and 7 network calls. 1 call to prepare the query, 2 calls to a synchronization routine, 1 call to describe the output columns from this query, 1 call to bind the parameters, 1 call to execute the query and maybe one call to a direct execution of a transaction maintainance routine query.
 
-If one were to copy paste the all the code for this query, excluding just the SQLPrepare command, there would be only two network calls in future calls (bind and execute).
+If one were to copy paste the all the code for this query, excluding just the SQLPrepare command, there would be only three network calls in future calls (describe, bind and execute).
 
 
 ## Example Query 2
