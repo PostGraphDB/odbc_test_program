@@ -3,12 +3,12 @@ This repo contains 4 query examples to highlight some behavior of the ODBC drive
 
 The point is to highlight a potential issue with Prepared Statements. 
 
-This repo simpiifies an issue that our team found in the code for pyODBC that is used by VectorDBBench. The first query simplifies what is happening for every call to the execute method from python using pyODBC. The next query shows a small change where we take out the call to SQLPrepare and we expect the Prepared Statement from the previous query to be reused. The following two queries are examples of ways to get the Prepared Statement to be reused with some alterations to the frist and second queries.
-
+This repo simpiifies an issue that our team found in the code for pyODBC that is used by VectorDBBench. The first query simplifies what is happening for every call to the execute method from python using pyODBC. The next query shows a small change where we take out the call to SQLPrepare and we expect the Prepared Statement from the previous query to be reused. The following two queries are examples of ways to get the Prepared Statement to be reused with some alterations to the first and second queries.
 
 The key point to highlight with these queries is the setting of the parameter length to SQL_DATA_AT_EXEC. Which tells the Microsoft ODBC driver that the parameter will be sent to the server after SQLExecute is called. While this is not necessary for the parameters provided in these examples, when discussing parameteters of any significant size (vectors of at least 768 dimensions) this becomes an absolute necessity and will be used by pyODBC. 
+
 ```C
-SQLLEN l2 = SQL_DATA_AT_EXEC;
+SQLLEN l = SQL_DATA_AT_EXEC;
 ```
 
 ## Example Query 1
@@ -45,7 +45,7 @@ SQLBindParameter must be called again, because we called SQLFreeStmt function wi
 ReportStatus(SQLBindParameter(hStmt, (SQLUSMALLINT)1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_VARCHAR, 0, 0, &vec_str2, sizeof(vec_str2), &l2 ));
 ```
 
-For the next query we will take out the call to  SQLFreeStmt function with the SQL_RESET_PARAMS parameter
+For the next query we will take out the call to SQLFreeStmt function with the SQL_RESET_PARAMS parameter
 
 ```C
 SQLFreeStmt(hStmt, SQL_UNBIND);                                       
@@ -75,6 +75,9 @@ This query simplifies the process even futher.
 
 We are able to send the parameter data without use of the allocated buffer for the parameter data at all, we can just send the data via the SQLPutData call
 
+```C
+ReportStatus(ret = SQLPutData(hStmt, &vec_str4, SQL_NTS));
+```
 
 
 ## Build Command
